@@ -9,3 +9,14 @@ wheels/
 # Virtual environments
 .venv
 Containerfile.dev
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Devops
+jenkinsfile
+jenkinsfile_dir/*
+az-pipeline-app.yml

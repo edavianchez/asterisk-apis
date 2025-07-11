@@ -14,4 +14,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "autopep8>=2.3.2",
+    "ipdb>=0.13.13",
 ]
+test = []

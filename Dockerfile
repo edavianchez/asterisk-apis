@@ -7,6 +7,8 @@ ENV PYTHONUNBUFFERED=1
 
 ENV DEBUG=True
 
+ENV APP_URL=http://localhost:8000
+
 # Configuración de Asterisk AMI
 ENV ASTERISK__AMI__HOST=127.0.0.1
 ENV ASTERISK__AMI__PORT=5038

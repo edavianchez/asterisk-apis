@@ -4,6 +4,9 @@ from panoramisk.message import Message
 from app.schemas.responses.queue import Queue
 from app.schemas.responses.queue_member import QueueMember
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 
 @dataclass
 class Queues:
@@ -16,10 +19,22 @@ class Queues:
         queues_info = []
         # 'QueueStatus' genera múltiples eventos, por lo que iteramos
         for item in items:
+            logging.info(item)
             if item.event == 'QueueParams':
                 # Este evento contiene los parámetros generales de la cola
                 queues_info.append(Queue.model_validate(item))
         return queues_info
+
+    @staticmethod
+    def map_details(items: list[Message], queue_name: str) -> Queue | None:
+        """
+        Get details of a specific queue.
+        """
+        for item in items:
+            print(item)
+            if item.event == 'QueueParams' and item.queue == queue_name:
+                return Queue.model_validate(item)
+        return None
 
     @staticmethod
     def map_members(items: list[Message], queue_name: str) -> list[QueueMember]:

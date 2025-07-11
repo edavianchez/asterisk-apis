@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
         host=settings.asterisk.ami.host,
         port=settings.asterisk.ami.port,
         username=settings.asterisk.ami.username,
-        secret=settings.asterisk.ami.password,
+        secret=settings.asterisk.ami.password.get_secret_value(),
     )
     try:
         await manager.connect()
