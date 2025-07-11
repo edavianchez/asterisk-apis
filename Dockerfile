@@ -21,8 +21,8 @@ ENV ASTERISK__ARI__PORT=8088
 ENV ASTERISK__ARI__USERNAME=admin
 ENV ASTERISK__ARI__PASSWORD=admin
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY pyproject.toml .
+RUN pip install .
 
 WORKDIR /app
 COPY . /app
