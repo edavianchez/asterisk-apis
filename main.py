@@ -1,15 +1,11 @@
-import logging
 from fastapi import FastAPI
-from app.middleware.error_handling import http_error_handler
-from app.core.exceptions import QueueException
-from app.core.error_handlers import queue_exception_handler
 
+from app.core.error_handlers import queue_exception_handler
+from app.core.exceptions import QueueException
+from app.core.config import settings
+from app.middleware.error_handling import http_error_handler
 from app.routes.routes import api_router_v1
 from app.services.ami import lifespan
-from app.core.config import settings
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 app = FastAPI(title="Asterisk-APIs", lifespan=lifespan)

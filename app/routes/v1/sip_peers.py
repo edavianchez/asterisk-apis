@@ -6,7 +6,8 @@ from app.dependencies import AMIManager
 from app.services.sip_peers import SipPeers
 from app.schemas.responses.sip_peer import SipPeer
 from app.core.exceptions import (
-    NoSipPeersFoundException
+    NoSipPeersFoundException,
+    AsteriskTypeErrorException
 )
 
 router = APIRouter(
@@ -24,8 +25,12 @@ async def list_sip_peers(manager: Annotated[Manager, AMIManager]):
     """
     List all SIP peers.
     """
-    response = await manager.send_action({'Action': 'SIPpeers'})
-    sip_peers_info = SipPeers.map(response)
-    if not sip_peers_info:
-        raise NoSipPeersFoundException()
-    return sip_peers_info
+    try:
+        response = await manager.send_action({'Action': 'SIPpeers'})
+        sip_peers_info = SipPeers.map(response)
+        if not sip_peers_info:
+            raise NoSipPeersFoundException()
+        return sip_peers_info
+    except TypeError as e:
+        if e == "unhashable type: 'list'":
+            raise AsteriskTypeErrorException()
