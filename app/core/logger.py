@@ -7,7 +7,7 @@ import coloredlogs
 
 def setup_logger():
     logger = logging.getLogger("asterisk_api")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     # Log format
     log_format = '[%(asctime)s] %(name)s.%(levelname)s: %(message)s'
@@ -28,7 +28,7 @@ def setup_logger():
         'critical': {'color': 'red', 'bold': True}
     }
     coloredlogs.install(
-        level='INFO',
+        level='DEBUG',
         logger=logger,
         fmt=log_format,
         stream=sys.stdout,

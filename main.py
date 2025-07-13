@@ -11,12 +11,12 @@ from app.services.ami import lifespan
 
 app = FastAPI(title="Asterisk-APIs", lifespan=lifespan)
 
-app.add_middleware(JWTMiddleware)
 if not settings.debug:
-    app.add_middleware(ErrorHandler)
     app.docs_url = None
     app.openapi_url = None
     app.redoc_url = None
+app.add_middleware(ErrorHandler)
+app.add_middleware(JWTMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

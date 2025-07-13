@@ -1,8 +1,8 @@
 from typing import Callable, Awaitable
 
-from fastapi import Request, status, HTTPException
+from fastapi import Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import Response, JSONResponse
 
 from app.core.jwt import verify_token
 
@@ -14,13 +14,13 @@ class JWTMiddleware(BaseHTTPMiddleware):
         self,
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]]
-    ) -> Response:
+    ) -> Response | JSONResponse:
         if request.url.path.startswith("/api"):
             auth_header = request.headers.get("Authorization")
             if not auth_header or not auth_header.startswith('Bearer '):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Authorization header is missing"
+                return JSONResponse(
+                    content={"error": "Authorization header missing"},
+                    status_code=status.HTTP_403_FORBIDDEN
                 )
             _, token = auth_header.split()
             payload = verify_token(token)
