@@ -5,7 +5,7 @@ from typing import Annotated, List
 from app.dependencies import AMIManager
 from app.schemas.responses.channel import Channel
 from app.services.channels import Channels
-from app.core.exceptions import NoChannelsFoundException
+from app.exceptions.channel_exceptions import NoChannelsFoundException
 
 
 router = APIRouter(
