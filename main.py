@@ -10,7 +10,6 @@ from app.services.ami import lifespan
 
 
 app = FastAPI(title="Asterisk-APIs", lifespan=lifespan)
-
 if not settings.debug:
     app.docs_url = None
     app.openapi_url = None

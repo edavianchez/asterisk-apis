@@ -48,7 +48,7 @@ async def show(queue_name: Annotated[str, Path(examples=["Q5"])], manager: Annot
     return queue_info
 
 
-# @router.get("/{queue_name}/members", status_code=http_status.HTTP_200_OK, response_model=List[QueueMember])
+@router.get("/{queue_name}/members", status_code=http_status.HTTP_200_OK, response_model=List[QueueMember])
 async def members(queue_name: Annotated[str, Path(examples=["Q5"])], manager: Annotated[Manager, AMIManager]):
     """
     List all members of a specific queue.

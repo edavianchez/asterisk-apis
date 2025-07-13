@@ -41,6 +41,7 @@ class JwtConfig(BaseModel):
     """
     Configuration for JWT authentication.
     """
+    private_key: str = Field(..., description="Path to the JWT private key")
     public_key: str = Field(..., description="Path to the JWT public key")
     algo: str = Field(
         default="RS256",
