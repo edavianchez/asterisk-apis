@@ -1,6 +1,11 @@
+import logging
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr, Field
+from app.core.logger import setup_logger
+
+# Call setup_logger to configure the root logger
+setup_logger()
 
 
 class Ami(BaseModel):
@@ -32,6 +37,18 @@ class Asterisk(BaseModel):
     ari: Ari
 
 
+class JwtConfig(BaseModel):
+    """
+    Configuration for JWT authentication.
+    """
+    private_key: str = Field(..., description="Path to the JWT private key")
+    public_key: str = Field(..., description="Path to the JWT public key")
+    algo: str = Field(
+        default="RS256",
+        description="JWT algorithm used for signing"
+    )
+
+
 class Settings(BaseSettings):
     """
     Application settings using Pydantic for configuration management.
@@ -44,6 +61,8 @@ class Settings(BaseSettings):
         description="Base URL of the application"
     )
     asterisk: Asterisk
+    jwt: JwtConfig
+    logger: logging.Logger = logging.getLogger("asterisk_api")
 
 
 settings = Settings()  # Instantiate the settings object

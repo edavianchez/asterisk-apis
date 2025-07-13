@@ -8,7 +8,7 @@ from app.services.queues import Queues
 from app.schemas.responses.queue import Queue
 from app.schemas.responses.queue_member import QueueMember
 from app.dependencies import AMIManager
-from app.core.exceptions import (
+from app.exceptions.queue_exceptions import (
     NoQueuesFoundException,
     QueueNotFoundException,
     MemberNotFoundException,
@@ -48,7 +48,7 @@ async def show(queue_name: Annotated[str, Path(examples=["Q5"])], manager: Annot
     return queue_info
 
 
-# @router.get("/{queue_name}/members", status_code=http_status.HTTP_200_OK, response_model=List[QueueMember])
+@router.get("/{queue_name}/members", status_code=http_status.HTTP_200_OK, response_model=List[QueueMember])
 async def members(queue_name: Annotated[str, Path(examples=["Q5"])], manager: Annotated[Manager, AMIManager]):
     """
     List all members of a specific queue.

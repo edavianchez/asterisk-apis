@@ -1,0 +1,60 @@
+FROM docker.io/python:latest
+
+ENV DEBUG=True
+
+ENV APP_URL=http://localhost:8000
+
+# Configuración de Asterisk AMI
+ENV ASTERISK__AMI__HOST=127.0.0.1
+ENV ASTERISK__AMI__PORT=5038
+ENV ASTERISK__AMI__USERNAME=admin
+ENV ASTERISK__AMI__PASSWORD=admin123
+
+# Configuración de Asterisk ARI
+ENV ASTERISK__ARI__HOST=127.0.0.1
+ENV ASTERISK__ARI__PORT=8088
+ENV ASTERISK__ARI__USERNAME=admin
+ENV ASTERISK__ARI__PASSWORD=admin123
+
+ENV JWT__PRIVATE_KEY=PATH_TO_PRIVATE_KEY
+ENV JWT__PUBLIC_KEY=PATH_TO_PUBLIC_KEY
+ENV JWT__ALGO=RS256
+
+# !⚠️ Comenta las siguientes líneas si no sabes tu usuario de directorios ⚠️
+# ! ************************************************************************
+ARG USER=root
+ARG GROUP=root
+# ! ************************************************************************
+
+# Crea el usuario 'root'
+# -m: crea el directorio home
+# -s /bin/bash: establece el shell predeterminado
+# -u 1000 -g 1000: establece UID y GID para que coincidan con tu usuario host
+#                  (asumiendo que tu UID/GID es 1000, verifica con 'id -u' y 'id -g' en tu host)
+# !⚠️ Comenta las siguientes líneas si no sabes tu usuario de directorios ⚠️
+# ! ************************************************************************
+RUN groupadd -g 1000 ${USER} && useradd -m -s /bin/bash -u 1000 -g 1000 ${GROUP}
+# ! ************************************************************************
+
+
+# Opcional: Define el usuario por defecto para las futuras instrucciones del Dockerfile
+# !⚠️ Comenta las siguientes líneas si no sabes tu usuario de directorios ⚠️
+# ! ************************************************************************
+USER ${USER}
+# ! ************************************************************************
+
+# !⚠️ Descomentar las siguientes líneas si no trabajas con devcontainers ⚠️
+# ! ************************************************************************
+# COPY pyproject.toml .
+# RUN pip install .
+
+# WORKDIR /app
+# COPY . /app
+# ! ************************************************************************
+
+EXPOSE 8000
+
+# !⚠️ Descomentar las siguientes líneas si no trabajas con devcontainers ⚠️
+# ! ************************************************************************
+# CMD ["fastapi", "dev", "main.py", "--host", "0.0.0.0", "--port", "8000"]
+# ! ************************************************************************

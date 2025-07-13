@@ -4,25 +4,31 @@ from app.core.config import settings
 from app.dependencies import get_ami_manager
 from fastapi import status
 from fastapi.testclient import TestClient
-from main import app
+from main import app, bearer_scheme
 from unittest.mock import AsyncMock, MagicMock
 
-from tests.dependencies import list_messages
+from tests.dependencies import list_messages, create_test_jwt
 
 
 class ChannelsApiTests(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(app, base_url=settings.app_url)
+        token = create_test_jwt()
+        self.client = TestClient(
+            app,
+            base_url=settings.app_url,
+            headers={"Authorization": f"Bearer {token}"}
+        )
         self.mock = MagicMock()
         self.mock.send_action = AsyncMock()
-
-    def tearDown(self):
-        app.dependency_overrides = {}
-
-    def test_list_channels_success(self):
         # Mock the dependency
         app.dependency_overrides[get_ami_manager] = lambda: self.mock
 
+    def tearDown(self):
+        """Limpia el entorno después de cada test."""
+        # Limpiar las dependencias sobreescritas
+        app.dependency_overrides = {}
+
+    def test_list_channels_success(self):
         # Mock the AMI response
         messages = [
             "<Message ActionID='action/14b341a7-5360-4f4b-84a5-cd759a636b35/1/10' EventList='start' Message='Channels will follow' Response='Success' content=''>",
@@ -39,7 +45,6 @@ class ChannelsApiTests(unittest.TestCase):
             status.HTTP_200_OK,
             "Response status code should be 200 OK"
         )
-        data = response.json()
         self.assertDictEqual(
             response.json()[0],
             {
@@ -54,9 +59,6 @@ class ChannelsApiTests(unittest.TestCase):
         )
 
     def test_list_channels_no_channels_found(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response for no channels
         messages = [
             "<Message ActionID='action/d1fed037-f5b9-4b69-a8a0-d503d679d500/1/2' EventList='start' Message='Channels will follow' Response='Success' content=''>",

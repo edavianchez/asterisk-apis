@@ -5,10 +5,8 @@ from panoramisk import Manager
 from app.dependencies import AMIManager
 from app.services.sip_peers import SipPeers
 from app.schemas.responses.sip_peer import SipPeer
-from app.core.exceptions import (
-    NoSipPeersFoundException,
-    AsteriskTypeErrorException
-)
+from app.exceptions.sip_peer_exceptions import NoSipPeersFoundException
+from app.exceptions.asterisk_exceptions import AsteriskTypeErrorException
 
 router = APIRouter(
     responses={

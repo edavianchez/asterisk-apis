@@ -18,5 +18,8 @@ Containerfile.dev
 
 # Devops
 jenkinsfile
-jenkinsfile_dir/*
+jenkinsfile_dir
 az-pipeline-app.yml
+
+# Keys
+auth_keys
