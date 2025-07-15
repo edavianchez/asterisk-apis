@@ -1,4 +1,6 @@
-FROM docker.io/python:latest
+FROM docker.io/python:3.13-slim
+
+RUN apt-get update && apt-get upgrade -y && apt-get clean
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -25,8 +27,8 @@ ENV JWT__PRIVATE_KEY=PATH_TO_PRIVATE_KEY
 ENV JWT__PUBLIC_KEY=PATH_TO_PUBLIC_KEY
 ENV JWT__ALGO=RS256
 
-COPY pyproject.toml .
-RUN pip install .
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 WORKDIR /app
 COPY . /app
