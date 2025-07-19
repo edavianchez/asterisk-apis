@@ -1,25 +1,18 @@
-from fastapi import Request, Depends
-from panoramisk import Manager
+import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+from app.services.connections import ConnectionManager
+
+conn_manager = ConnectionManager()
 
 
-async def get_ami_manager(request: Request) -> Manager:
-    """
-    Dependency to get the AMI manager instance from the application state.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        Manager: Panoramisk AMI manager instance
-
-    Raises:
-        RuntimeError: If AMI manager is not available in application state
-    """
-    manager = getattr(request.app.state, 'manager', None)
-    if manager is None:
-        raise RuntimeError("AMI manager not available. Check AMI connection.")
-    return manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await conn_manager.start()
+    yield
+    await conn_manager.close()
 
 
-# Type alias for better code readability
-AMIManager = Depends(get_ami_manager)
+async def get_conn_manager() -> ConnectionManager:
+    return conn_manager

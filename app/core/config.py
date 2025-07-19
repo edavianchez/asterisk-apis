@@ -53,7 +53,12 @@ class Settings(BaseSettings):
     """
     Application settings using Pydantic for configuration management.
     """
-    model_config = SettingsConfigDict(env_nested_delimiter='__')
+    model_config = SettingsConfigDict(
+        env_nested_delimiter='__',
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
     debug: bool = False
     app_url: str = Field(

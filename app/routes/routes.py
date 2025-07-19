@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routes.v1 import queues, sip_peers, channels
+from app.routes.v1 import queues, sip_peers, channels, websockets
 
 api_router_v1 = APIRouter(prefix="/v1")
 api_router_v1.include_router(queues.router, prefix="/queues", tags=["Queues"])
@@ -13,4 +13,10 @@ api_router_v1.include_router(
     channels.router,
     prefix="/channels",
     tags=["Channels"]
+)
+
+ws_router_v1 = APIRouter(prefix="/v1")
+ws_router_v1.include_router(
+    websockets.router,
+    tags=["WebSockets"]
 )

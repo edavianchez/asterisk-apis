@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from panoramisk.message import Message
 
-from app.schemas.responses.queue import Queue
+from app.schemas.responses.queue import Queue, QueueWithMembers
 from app.schemas.responses.queue_member import QueueMember
 
 
@@ -41,3 +41,19 @@ class Queues:
             if item.event == 'QueueMember' and item.queue == queue_name:
                 members_info.append(QueueMember.model_validate(item))
         return members_info
+
+    @staticmethod
+    def map_with_members(items: list[Message], queue_names: list[str]) -> list[QueueWithMembers]:
+        """
+        Get details of a specific queue with its members.
+        """
+        queue_info = []
+        for item in items:
+            if item.event == 'QueueParams' and item.queue in queue_names:
+                queue_info.append(QueueWithMembers.model_validate(item))
+            elif item.event == 'QueueMember' and item.queue in queue_names:
+                member = QueueMember.model_validate(item)
+                for queue in queue_info:
+                    if queue.queue == item.queue:
+                        queue.members.append(member)
+        return queue_info
