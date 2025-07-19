@@ -6,21 +6,26 @@ from fastapi.testclient import TestClient
 from main import app
 from app.dependencies import get_ami_manager
 from app.core.config import settings
-from tests.dependencies import list_messages
+from tests.dependencies import list_messages, create_test_jwt
 
 
 class SipPeersApiTests(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(app, base_url=settings.app_url)
+        token = create_test_jwt()
+        self.client = TestClient(
+            app,
+            base_url=settings.app_url,
+            headers={"Authorization": f"Bearer {token}"}
+        )
         self.mock = MagicMock()
         self.mock.send_action = AsyncMock()
+        # Mock the dependency
+        app.dependency_overrides[get_ami_manager] = lambda: self.mock
 
     def tearDown(self):
         app.dependency_overrides = {}
 
     def test_list_sip_peers_success(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
 
         # Mock the AMI response
         messages = [
@@ -60,9 +65,6 @@ class SipPeersApiTests(unittest.TestCase):
         )
 
     def test_list_sip_peers_no_peers_found(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response for no peers
         messages = [
             "<Message ActionID='action/df27bd53-9e29-44a9-a781-449d919140c2/1/2' EventList='start' Message='Peer status list will follow' Response='Success' content=''>",

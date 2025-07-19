@@ -10,8 +10,8 @@ dependencies = [
     "fastapi[standard]>=0.115.13",
     "panoramisk>=1.4",
     "pydantic-settings>=2.9.1",
-    "pyjwt>=2.10.1",
     "coloredlogs>=15.0.1",
+    "pyjwt==2.8",
 ]
 
 [dependency-groups]

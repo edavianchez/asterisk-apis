@@ -5,8 +5,8 @@ from fastapi.security import HTTPBearer
 from app.core.config import settings
 from app.middlewares.error_handler import ErrorHandler
 from app.middlewares.jwt_middleware import JWTMiddleware
-from app.routes.routes import api_router_v1
-from app.services.ami import lifespan
+from app.routes.routes import api_router_v1, ws_router_v1
+from app.dependencies import lifespan
 
 
 app = FastAPI(title="Asterisk-APIs", lifespan=lifespan)
@@ -28,6 +28,11 @@ app.include_router(
     api_router_v1,
     prefix="/api",
     dependencies=[Depends(bearer_scheme)]
+)
+app.include_router(
+    ws_router_v1,
+    prefix="/ws",
+    # dependencies=[Depends(bearer_scheme)]
 )
 
 

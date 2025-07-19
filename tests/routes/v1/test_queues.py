@@ -6,22 +6,26 @@ from fastapi import status
 from main import app
 from app.dependencies import get_ami_manager
 from app.core.config import settings
-from tests.dependencies import list_messages
+from tests.dependencies import list_messages, create_test_jwt
 
 
 class QueuesApiTests(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(app, base_url=settings.app_url)
+        token = create_test_jwt()
+        self.client = TestClient(
+            app,
+            base_url=settings.app_url,
+            headers={"Authorization": f"Bearer {token}"}
+        )
         self.mock = MagicMock()
         self.mock.send_action = AsyncMock()
+        # Mock the dependency
+        app.dependency_overrides[get_ami_manager] = lambda: self.mock
 
     def tearDown(self):
         app.dependency_overrides = {}
 
     def test_list_queues_success(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response
         messages = [
             "<Message ActionID='action/ff215f4a-5274-4e7d-a89b-9d7a66385a5e/1/2' EventList='start' Message='Queue status will follow' Response='Success' content=''>",
@@ -170,9 +174,6 @@ class QueuesApiTests(unittest.TestCase):
         )
 
     def test_list_queues_no_queues_found(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response for no queues
         messages = [
             "<Message ActionID='action/ff215f4a-5274-4e7d-a89b-9d7a66385a5e/1/2' EventList='start' Message='Queue status will follow' Response='Success' content=''>",
@@ -193,9 +194,6 @@ class QueuesApiTests(unittest.TestCase):
         )
 
     def test_show_queue_found(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response for a specific queue
         messages = [
             "<Message ActionID='action/ea92edb2-899c-46e9-89b1-bc7e5e7f97f5/1/7' EventList='start' Message='Queue status will follow' Response='Success' content=''>",
@@ -230,9 +228,6 @@ class QueuesApiTests(unittest.TestCase):
         )
 
     def test_show_queue_not_found(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response for a non-existing queue
         messages = [
             "<Message ActionID='action/cc4ced9e-1c43-4053-b8e3-38c5d4ec5d11/1/44' EventList='start' Message='Queue status will follow' Response='Success' content=''>",
@@ -252,9 +247,6 @@ class QueuesApiTests(unittest.TestCase):
         )
 
     def test_in_queues_success(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response for in-queues
         messages = [
             [
@@ -323,9 +315,6 @@ class QueuesApiTests(unittest.TestCase):
         )
 
     def test_in_queues_not_found(self):
-        # Mock the dependency
-        app.dependency_overrides[get_ami_manager] = lambda: self.mock
-
         # Mock the AMI response for no queues found
         messages = [
             [
@@ -352,4 +341,61 @@ class QueuesApiTests(unittest.TestCase):
         self.assertDictEqual(
             response.json(),
             {"detail": "No queues found"}
+        )
+
+    def test_members_success(self):
+        # Mock the AMI response for queue members
+        messages = [
+            "<Message ActionID='action/0b06da7b-959d-43a0-93e8-a9c49854d2ba/1/6' EventList='start' Message='Queue status will follow' Response='Success' content=''>",
+            "<Message Abandoned='14' ActionID='action/0b06da7b-959d-43a0-93e8-a9c49854d2ba/1/6' Calls='0' Completed='26' Event='QueueParams' Holdtime='3' Max='100' Queue='Q5' ServiceLevel='0' ServicelevelPerf='42.3' ServicelevelPerf2='27.5' Strategy='leastrecent' TalkTime='86' Weight='0' content=''>",
+            "<Message ActionID='action/0b06da7b-959d-43a0-93e8-a9c49854d2ba/1/6' CallsTaken='0' Event='QueueMember' InCall='0' LastCall='0' LastPause='0' Location='SIP/2034' LoginTime='1751555966' Membership='dynamic' Name='natalia.merchan' Paused='0' PausedReason='' Penalty='0' Queue='Q5' StateInterface='SIP/2034' Status='5' Wrapuptime='0' content=''>",
+            "<Message ActionID='action/0b06da7b-959d-43a0-93e8-a9c49854d2ba/1/6' Event='QueueStatusComplete' EventList='Complete' ListItems='2' content=''>"
+        ]
+
+        self.mock.send_action.return_value = list_messages(messages)
+
+        response = self.client.get("/api/v1/queues/Q5/members/")
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+            "Response status code should be 200 OK"
+        )
+        self.assertDictEqual(
+            response.json()[0],
+            {
+                "queue": "Q5",
+                "name": "natalia.merchan",
+                "location": "SIP/2034",
+                "membership": "dynamic",
+                "penalty": "0",
+                "callstaken": "0",
+                "lastcall": "0",
+                "lastpause": "0",
+                "logintime": "1751555966",
+                "incall": "0",
+                "status": "5",
+                "paused": "0",
+                "pausedreason": "",
+                "wrapuptime": "0"
+            }
+        )
+
+    def test_members_not_found(self):
+        # Mock the AMI response for no members found
+        messages = [
+            "<Message ActionID='action/12d4bf37-55c5-4488-89b8-5302e7bc4a92/1/3' EventList='start' Message='Queue status will follow' Response='Success' content=''>",
+            "<Message ActionID='action/12d4bf37-55c5-4488-89b8-5302e7bc4a92/1/3' Event='QueueStatusComplete' EventList='Complete' ListItems='0' content=''>"
+        ]
+        self.mock.send_action.return_value = list_messages(messages)
+
+        response = self.client.get("/api/v1/queues/Q991/members/")
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND,
+            "Response status code should be 404 Not Found"
+        )
+        self.assertDictEqual(
+            response.json(),
+            {"detail": "No members found for queue 'Q991'"}
         )
