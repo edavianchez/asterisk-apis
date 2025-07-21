@@ -27,7 +27,7 @@ class MemberStatusTable(QueueMemberBase):
         return hold_time
 
     @computed_field()
-    def pause_time(self) -> str:
+    def paused_time(self) -> str:
         pause_time = "N/A"
         if self.paused_start_at:
             start_at = float(self.paused_start_at)
