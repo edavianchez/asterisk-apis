@@ -1,6 +1,6 @@
 from typing import Optional
 from app.schemas.responses.queue_member import QueueMemberBase
-from pydantic import computed_field
+from pydantic import computed_field, field_validator
 from datetime import datetime
 
 
@@ -29,7 +29,7 @@ class MemberStatusTable(QueueMemberBase):
     @computed_field()
     def paused_time(self) -> str:
         pause_time = "N/A"
-        if self.paused_start_at:
+        if self.paused_start_at and self.paused_reason != "":
             start_at = float(self.paused_start_at)
             start_at = datetime.fromtimestamp(start_at)
             now = datetime.now()
@@ -38,6 +38,12 @@ class MemberStatusTable(QueueMemberBase):
             minutes, seconds = divmod(remainder, 60)
             pause_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         return pause_time
+
+    @field_validator("paused_start_at", mode="after")
+    def set_paused_start_at_None(cls, v, values):
+        if values.data["paused_reason"] == "":
+            v = None
+        return v
 
     class Config:
         # Permite inicializar usando los nombres de campo de Pydantic o los alias
