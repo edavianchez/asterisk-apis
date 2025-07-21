@@ -6,6 +6,7 @@ class QueueMemberPause(BaseModel):
     paused: bool = Field(..., alias="paused")
     paused_reason: str = Field(..., alias="pausedreason")
     timestamp: str = Field(..., alias="timestamp")
+    queue: str = Field(..., alias="queue")
 
     @field_validator("location")
     def parse_location(cls, value):

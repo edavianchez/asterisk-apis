@@ -9,6 +9,9 @@ from app.schemas.responses.hold import Hold
 from app.schemas.responses.unhold import UnHold
 from app.schemas.responses.queue_member_pause import QueueMemberPause
 from app.schemas.responses.hangup import Hangup
+from app.core.config import settings
+
+logger = settings.logger
 
 
 class StatusTable:
@@ -31,7 +34,8 @@ class StatusTable:
                 member_model = self.__set_peers_and_channels(
                     member_model, peers, channels
                 )
-                self.__members_table[member_model.location] = member_model
+                table_location = f"{member_model.location}/{member_model.queue}"
+                self.__members_table[table_location] = member_model
             if item.event == "QueueEntry":
                 call = QueueEntry.model_validate(item)
                 self.__queued_calls.append(call)
@@ -136,7 +140,7 @@ class StatusTable:
         for item in items:
             if item.event == "QueueMember":
                 member_event = MemberStatusTable.model_validate(item)
-                location = member_event.location
+                location = f"{member_event.location}/{member_event.queue}"
                 if location in self.__members_table:
                     self.__update_member(
                         member_event, peers, channels
@@ -156,18 +160,20 @@ class StatusTable:
     def set_hold_time(self, event):
         hold = Hold.model_validate(event)
         location = hold.channel
-        if location in self.__members_table:
-            member = self.__members_table[location]
-            member.hold_start_at = hold.timestamp
-            self.__members_table[location] = member
+        for member in self.__members_table.values():
+            if location == member.location:
+                member.hold_start_at = hold.timestamp
+                table_location = f"{location}/{member.queue}"
+                self.__members_table[table_location] = member
 
     def set_unhold(self, event):
         unhold = UnHold.model_validate(event)
         location = unhold.channel
-        if location in self.__members_table:
-            member = self.__members_table[location]
-            member.hold_start_at = None
-            self.__members_table[location] = member
+        for member in self.__members_table.values():
+            if location == member.location:
+                member.hold_start_at = None
+                table_location = f"{location}/{member.queue}"
+                self.__members_table[table_location] = member
 
     def __set_peers_and_channels(
         self,
@@ -192,7 +198,8 @@ class StatusTable:
         channels: dict[str, Channel]
     ):
         location = model.location
-        member_table = self.__members_table[location]
+        table_location = f"{location}/{model.queue}"
+        member_table = self.__members_table[table_location]
         member_table.name = model.name
         member_table.status = model.status
         if location in peers:
@@ -209,11 +216,11 @@ class StatusTable:
             member_table.call_status = "N/A"
             member_table.duration = "N/A"
             member_table.phone_number = "N/A"
-        self.__members_table[location] = member_table
+        self.__members_table[table_location] = member_table
 
     def add_pause(self, event):
         pause = QueueMemberPause.model_validate(event)
-        location = pause.location
+        location = f"{pause.location}/{pause.queue}"
         if location in self.__members_table:
             member = self.__members_table[location]
             member.paused = pause.paused
@@ -224,7 +231,12 @@ class StatusTable:
     def listen_hangup(self, event):
         hangup = Hangup.model_validate(event)
         location = hangup.location
-        if location in self.__members_table:
-            member = self.__members_table[location]
-            member.hold_start_at = None
-            self.__members_table[location] = member
+        for member in self.__members_table.values():
+            if location == member.location:
+                member.hold_start_at = None
+                table_location = f"{location}/{member.queue}"
+                self.__members_table[table_location] = member
+
+    def unique_values(self, data: list[dict]) -> list[dict]:
+        uniques = {member["location"]: member for member in data}
+        return list(uniques)

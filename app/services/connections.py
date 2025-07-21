@@ -39,6 +39,7 @@ class ConnectionManager:
 
     async def send(self, ws: dict[str, Any]):
         data_filtered = self.__status_table.filter(ws["queues"])
+        data_filtered = self.__status_table.unique_values(data_filtered)
         call_filtered = self.__status_table.call_filter(ws["queues"])
         data = {
             "data_table": data_filtered,
