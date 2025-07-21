@@ -83,7 +83,7 @@ class ConnectionManager:
         self.ami_manager.register_event("Unhold", handle_event)
         self.ami_manager.register_event("QueueMemberPause", handle_event)
         self.ami_manager.register_event("Hangup", handle_event)
-        # self.ami_manager.register_event("*", handle_event)
+        # self.ami_manager.register_event("ExtensionStatus", handle_event)
         while True:
             try:
                 if not self.ami_manager._connected:
@@ -117,6 +117,8 @@ class ConnectionManager:
                     self.__status_table.add_pause(event)
                 case "Hangup":
                     self.__status_table.listen_hangup(event)
+                case "ExtensionStatus":
+                    logger.info(f"{event.event}: {event}")
         except Exception as e:
             logger.error(f"Error ASCCH1 procesando evento: {str(e)}")
 
