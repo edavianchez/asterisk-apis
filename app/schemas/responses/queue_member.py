@@ -13,7 +13,6 @@ class MemberState(IntEnum):
     RINGING = 6         # Llamando
     RINGINUSE = 7       # Recibiendo nueva llamada mientras ya tiene una activa
     ONHOLD = 8          # En espera
-    INPAUSE = 9         # En pausa
 
     @property
     def friendly_name(self):
@@ -27,7 +26,6 @@ class MemberState(IntEnum):
             6: "Llamando",
             7: "Llamando (mientras esta en llamada)",
             8: "En espera",
-            9: "En pausa",
         }
         return names[self.value]
 
@@ -52,14 +50,6 @@ class QueueMemberBase(BaseModel):
     def campaign(self) -> str:
         """Devuelve el nombre del estado como texto"""
         return self.queue.replace("Q", "")
-
-    @field_validator("status", mode="after")
-    @classmethod
-    def set_pause_status(cls, v, values: ValidationInfo):
-        paused = values.data.get("paused")
-        if paused:
-            v = MemberState.INPAUSE.value
-        return v
 
     @field_validator("location")
     def parse_location(cls, value):

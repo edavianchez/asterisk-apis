@@ -30,7 +30,7 @@ class ConnectionManager:
 
     def remove_websocket(self, rrhh_id: int):
         for ws_item in self.active_connections:
-            if ws_item[rrhh_id] == rrhh_id:
+            if ws_item["rrhh_id"] == rrhh_id:
                 self.active_connections.remove(ws_item)
                 break
         logger.info(
@@ -78,7 +78,11 @@ class ConnectionManager:
         async def handle_event(_, event):
             await self.handle_asterisk_event(event)
 
-        self.ami_manager.register_event("*", handle_event)
+        self.ami_manager.register_event("Hold", handle_event)
+        self.ami_manager.register_event("Unhold", handle_event)
+        self.ami_manager.register_event("QueueMemberPause", handle_event)
+        self.ami_manager.register_event("Hangup", handle_event)
+        # self.ami_manager.register_event("*", handle_event)
         while True:
             try:
                 if not self.ami_manager._connected:
@@ -92,21 +96,28 @@ class ConnectionManager:
 
             except ConnectionError as e:
                 logger.warning(
-                    f"Error ASCCS89 de conexión AMI: {str(e)}. Reconectando...")
+                    f"Error ASCCS1 de conexión AMI: {str(e)}. Reconectando...")
                 await asyncio.sleep(5)
             except asyncio.CancelledError:
                 logger.info("Conexión AMI cancelada")
                 break
             except Exception as e:
-                logger.error(f"Error ASCCS95 crítico en AMI: {str(e)}")
+                logger.error(f"Error ASCCS2 crítico en AMI: {str(e)}")
                 await asyncio.sleep(10)
 
     async def handle_asterisk_event(self, event):
         try:
-            event_name = event.event
-            # logger.info(f"Llego el evento {event_name}: {event}")
+            match event.event:
+                case "Hold":
+                    self.__status_table.add_hold_time(event)
+                case "Unhold":
+                    self.__status_table.add_unhold(event)
+                case "QueueMemberPause":
+                    self.__status_table.add_pause(event)
+                case "Hangup":
+                    self.__status_table.listen_hangup()
         except Exception as e:
-            logger.error(f"Error ASCCH104 procesando evento: {str(e)}")
+            logger.error(f"Error ASCCH1 procesando evento: {str(e)}")
 
     async def start(self):
         """Inicia la conexión AMI en segundo plano"""
@@ -134,19 +145,19 @@ class ConnectionManager:
                         logger.info("Conexión AMI cerrada")
                 except Exception as e:
                     logger.error(
-                        f"Error ASCCC131 cerrando conexión AMI: {str(e)}")
+                        f"Error ASCCC1 cerrando conexión AMI: {str(e)}")
                 finally:
                     self.ami_manager = None
 
             # Cerrar todas las conexiones WebSocket
-            for ws in list(self.active_connections):
+            for ws_item in self.active_connections:
                 try:
-                    await ws.close()
+                    await ws_item["ws"].close()
                 except Exception:
                     pass
-                self.remove_websocket(ws)
+                self.self.active_connections.remove(ws_item)
 
             logger.info("Todas las conexiones cerradas")
 
         except Exception as e:
-            logger.error(f"Error ASCCC146 en cierre: {str(e)}")
+            logger.error(f"Error ASCCC2 en cierre: {str(e)}")

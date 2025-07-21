@@ -48,8 +48,6 @@ async def status(
                     "queues": msg["queues"]
                 })
             refresh_time = msg["refresh_time"] if "refresh time" in msg else 10
-            # await conn_manager.add_queues_to_send(rrhh_id, msg["queues"])
-            logger.info(f"Msg from client: {msg}")
 
             # Enviar mensaje cada X segundos
             async def send_periodic_message():
@@ -69,7 +67,7 @@ async def status(
         conn_manager.remove_websocket(rrhh_id)
     except Exception as e:
         logger.error(f"Error WebSocket: {str(e)}")
-        conn_manager.remove_websocket(websocket, rrhh_id)
+        conn_manager.remove_websocket(rrhh_id)
         try:
             await websocket.close()
         except Exception:
@@ -84,13 +82,13 @@ async def status(
 async def status_info():
     """
     Este endpoint proporciona la información necesaria para conectar el WebSocket de estado de gestion de los agentes.\n
-    **URL de conexión:** `ws://<dns>/ws/v1/agents/status/{rrhh_id}`\n
+    **URL de conexión:** `ws://<dns>/ws/v1/agents/status/:rrhh_id`\n
     **Parametros de ruta**\n
     - `rrhh_id`: Identificador del cliente que establece la conexión.\n
-    **Cuerpo de la petición (opcional)**\n
+    **Parametros de Mensajes**\n
     - `queues_names`: Lista de nombres de colas de las cuales desea recibir información.\n
-    - **Ejemplo**: `["Q8", "Q5"]`\n
-    - **Nota**: Si no se especifica, se recibirán actualizaciones de todas las colas.\n
+    - `refresh_time`: (opcional) Tiempo en segundos para obtener los datos actualizados\n
+    - **Nota**: Si no se especifica el queues_names, no se recibirán datos.\n
     **Respuesta**\n
     ```json
     [
@@ -103,9 +101,10 @@ async def status_info():
 
     """
     return JSONResponse({
-        "url": f"ws://{settings.app_url}/ws/v1/agents/status/20",
+        "url": f"ws://{settings.app_url}/ws/v1/agents/status/:rrhh_id",
         "body_example": {
-            "queues_names": ["Q8", "Q5"]
+            "queues_names": ["Q8", "Q5"],
+            "refresh_time": 10
         },
         "response_example": [
             {
