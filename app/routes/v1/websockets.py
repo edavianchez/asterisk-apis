@@ -65,6 +65,7 @@ async def status(
                 )
     except WebSocketDisconnect:
         conn_manager.remove_websocket(rrhh_id)
+        websocket.periodic_task.cancel()
     except Exception as e:
         logger.error(f"Error WebSocket: {str(e)}")
         conn_manager.remove_websocket(rrhh_id)
