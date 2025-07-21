@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator, ValidationInfo
 from enum import IntEnum
 
 
@@ -13,6 +13,7 @@ class MemberState(IntEnum):
     RINGING = 6         # Llamando
     RINGINUSE = 7       # Recibiendo nueva llamada mientras ya tiene una activa
     ONHOLD = 8          # En espera
+    INPAUSE = 9         # En pausa
 
     @property
     def friendly_name(self):
@@ -25,7 +26,8 @@ class MemberState(IntEnum):
             5: "No disponible",
             6: "Llamando",
             7: "Llamando (mientras esta en llamada)",
-            8: "En espera"
+            8: "En espera",
+            9: "En pausa",
         }
         return names[self.value]
 
@@ -36,7 +38,8 @@ class QueueMemberBase(BaseModel):
     """
     location: str = Field(..., alias='location')
     name: str = Field(..., alias='name')
-    paused: str = Field(..., alias='paused')
+    paused: bool = Field(..., alias='paused')
+    paused_reason: str = Field(..., alias='pausedreason')
     queue: str = Field(..., alias='queue')
     status: int = Field(..., alias='status')
 
@@ -44,6 +47,27 @@ class QueueMemberBase(BaseModel):
     def status_name(self) -> str:
         """Devuelve el nombre del estado como texto"""
         return MemberState(self.status).friendly_name
+
+    @computed_field()
+    def campaign(self) -> str:
+        """Devuelve el nombre del estado como texto"""
+        return self.queue.replace("Q", "")
+
+    @field_validator("status", mode="after")
+    @classmethod
+    def set_pause_status(cls, v, values: ValidationInfo):
+        paused = values.data.get("paused")
+        if paused:
+            v = MemberState.INPAUSE.value
+        return v
+
+    @field_validator("location")
+    def parse_location(cls, value):
+        return value.replace("SIP/", "ext. ")
+
+    @field_validator("paused_reason")
+    def parse_paused_reason(cls, value):
+        return "N/A" if value == "" else value
 
 
 class QueueMember(QueueMemberBase):

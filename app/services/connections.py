@@ -38,19 +38,23 @@ class ConnectionManager:
         )
 
     async def send(self, ws: dict[str, Any]):
-        data_filtered = list(self.__status_table.filter(ws["queues"]))
+        data_filtered = self.__status_table.filter(ws["queues"])
+        call_filtered = self.__status_table.call_filter(ws["queues"])
         data = {
             "data_table": data_filtered,
-            "counts": self.__status_table.count_by_state(data_filtered)
+            "total_rows": len(data_filtered),
+            "counts": self.__status_table.count_by_state(data_filtered),
+            "queued_calls": call_filtered,
+            "count_queued_calls": len(call_filtered)
         }
-        await ws["ws"].send_text(json.dumps(data))
+        await ws["ws"].send_json(data)
 
-    async def add_queues_to_send(self, rrhh_id: int, queues: list[str]):
-        for ws in self.active_connections:
-            if ws["rrhh_id"] == rrhh_id:
-                ws["queues"] = queues
-                if ws["queues"]:
-                    await self.send(ws)
+    # async def add_queues_to_send(self, rrhh_id: int, queues: list[str]):
+    #     for ws in self.active_connections:
+    #         if ws["rrhh_id"] == rrhh_id:
+    #             ws["queues"] = queues
+    #             if ws["queues"]:
+    #                 await self.send(ws)
 
     # async def broadcast(self):
     #     for ws in self.active_connections:
@@ -74,13 +78,7 @@ class ConnectionManager:
         async def handle_event(_, event):
             await self.handle_asterisk_event(event)
 
-        self.ami_manager.register_event("DeviceStateChange", handle_event)
-        self.ami_manager.register_event("AgentConnect", handle_event)
-        self.ami_manager.register_event("QueueMemberStatus", handle_event)
-        self.ami_manager.register_event("QueueMemberRemoved", handle_event)
-        self.ami_manager.register_event("AgentComplete", handle_event)
-        self.ami_manager.register_event("Hangup", handle_event)
-        self.ami_manager.register_event("QueueMemberAdded", handle_event)
+        self.ami_manager.register_event("*", handle_event)
         while True:
             try:
                 if not self.ami_manager._connected:
@@ -89,7 +87,8 @@ class ConnectionManager:
                     logger.info("✅ Conexión AMI establecida")
                     await self.__status_table.load_data(self.ami_manager)
 
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
+                await self.__status_table.reload(self.ami_manager)
 
             except ConnectionError as e:
                 logger.warning(
@@ -104,9 +103,8 @@ class ConnectionManager:
 
     async def handle_asterisk_event(self, event):
         try:
-            logger.info(f"Llego el evento: {event}")
-            await self.broadcast()
-            # await self.broadcast(json.dumps(event_data))
+            event_name = event.event
+            # logger.info(f"Llego el evento {event_name}: {event}")
         except Exception as e:
             logger.error(f"Error ASCCH104 procesando evento: {str(e)}")
 

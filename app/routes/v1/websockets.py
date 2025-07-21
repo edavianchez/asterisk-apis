@@ -41,17 +41,20 @@ async def status(
     try:
         while True:
             msg = await websocket.receive_text()
-            print(msg)
             msg = json.loads(msg)
             if "queues" in msg:
-                await conn_manager.add_queues_to_send(rrhh_id, msg["queues"])
+                await conn_manager.send({
+                    "ws": websocket,
+                    "queues": msg["queues"]
+                })
+            refresh_time = msg["refresh_time"] if "refresh time" in msg else 10
+            # await conn_manager.add_queues_to_send(rrhh_id, msg["queues"])
             logger.info(f"Msg from client: {msg}")
 
             # Enviar mensaje cada X segundos
             async def send_periodic_message():
                 while True:
-                    await asyncio.sleep(10)  # cada 10 segundos
-                    await websocket.send_text(json.dumps({"message": "Mensaje periódico"}))
+                    await asyncio.sleep(refresh_time)  # cada x segundos
                     await conn_manager.send({
                         "ws": websocket,
                         "queues": msg["queues"]
