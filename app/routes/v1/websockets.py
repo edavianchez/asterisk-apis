@@ -47,7 +47,7 @@ async def status(
                     "ws": websocket,
                     "queues": msg["queues"]
                 })
-            refresh_time = msg["refresh_time"] if "refresh time" in msg else 10
+            refresh_time = msg["refresh_time"] if "refresh time" in msg else 1
 
             # Enviar mensaje cada X segundos
             async def send_periodic_message():

@@ -130,9 +130,9 @@ class StatusTable:
         channels = await ami_manager.send_action({'Action': 'CoreShowChannels'})
         channels = Channels.map(channels)
         channels = {channel.channel.split(
-            "-")[0].replace("SIP/", ""): channel for channel in channels}
+            "-")[0].replace("SIP/", "ext. "): channel for channel in channels}
         peers = SipPeers.map(peers)
-        peers = {peer.objectname: peer for peer in peers}
+        peers = {f"ext. {peer.objectname}": peer for peer in peers}
         for item in items:
             if item.event == "QueueMember":
                 member_event = MemberStatusTable.model_validate(item)

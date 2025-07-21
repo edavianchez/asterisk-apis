@@ -91,7 +91,7 @@ class ConnectionManager:
                     logger.info("✅ Conexión AMI establecida")
                     await self.__status_table.load_data(self.ami_manager)
 
-                await asyncio.sleep(5)
+                await asyncio.sleep(1)
                 await self.__status_table.reload(self.ami_manager)
 
             except ConnectionError as e:
@@ -109,13 +109,13 @@ class ConnectionManager:
         try:
             match event.event:
                 case "Hold":
-                    self.__status_table.add_hold_time(event)
+                    self.__status_table.set_hold_time(event)
                 case "Unhold":
-                    self.__status_table.add_unhold(event)
+                    self.__status_table.set_unhold(event)
                 case "QueueMemberPause":
                     self.__status_table.add_pause(event)
                 case "Hangup":
-                    self.__status_table.listen_hangup()
+                    self.__status_table.listen_hangup(event)
         except Exception as e:
             logger.error(f"Error ASCCH1 procesando evento: {str(e)}")
 

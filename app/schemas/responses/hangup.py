@@ -1,8 +1,12 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Hangup(BaseModel):
     location: str = Field(..., alias="channel")
+
+    @field_validator("location")
+    def parce_channel(cls, value: str):
+        return value.split("-")[0].replace("SIP/", "ext. ")
 
     class Config:
         # Permite inicializar usando los nombres de campo de Pydantic o los alias
