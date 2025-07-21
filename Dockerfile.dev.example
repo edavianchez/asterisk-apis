@@ -47,8 +47,8 @@ USER ${USER}
 
 # !⚠️ Descomentar las siguientes líneas si no trabajas con devcontainers ⚠️
 # ! ************************************************************************
-# COPY pyproject.toml .
-# RUN pip install .
+# COPY requirements.txt .
+# RUN pip install -r requirements.txt
 
 # WORKDIR /app
 # COPY . /app
