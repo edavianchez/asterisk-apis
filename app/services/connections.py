@@ -115,8 +115,6 @@ class ConnectionManager:
                     self.__status_table.set_unhold(event)
                 case "QueueMemberPause":
                     self.__status_table.add_pause(event)
-                    if event.queue == "Q109":
-                        logger.info(f"{event.event}: {event}")
                 case "Hangup":
                     self.__status_table.listen_hangup(event)
         except Exception as e:
