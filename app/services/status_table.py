@@ -239,4 +239,4 @@ class StatusTable:
 
     def unique_values(self, data: list[dict]) -> list[dict]:
         uniques = {member["location"]: member for member in data}
-        return list(uniques)
+        return list(uniques.values())
