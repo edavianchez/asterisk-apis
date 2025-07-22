@@ -11,3 +11,7 @@ class QueueMemberPause(BaseModel):
     @field_validator("location")
     def parse_location(cls, value):
         return value.replace("SIP/", "ext. ")
+
+    @field_validator("paused_reason")
+    def parce_paused_reason(cls, value):
+        return "N/A" if value == "" else value

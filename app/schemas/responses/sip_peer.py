@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Optional
 from enum import Enum
 
@@ -52,6 +52,10 @@ class SipPeer(BaseModel):
     @computed_field
     def status_name(self) -> str:
         return SIPPeerStatus.from_asterisk_status(self.status.split(" ")[0]).value
+
+    @field_validator("objectname")
+    def parce_objectname(cls, value):
+        return f"ext. {value}"
 
     class Config:
         # Permite inicializar usando los nombres de campo de Pydantic o los alias

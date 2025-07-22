@@ -29,7 +29,7 @@ class MemberStatusTable(QueueMemberBase):
     @computed_field()
     def paused_time(self) -> str:
         pause_time = "N/A"
-        if self.paused_start_at and self.paused_reason != "":
+        if self.paused_start_at and self.paused:
             start_at = float(self.paused_start_at)
             start_at = datetime.fromtimestamp(start_at)
             now = datetime.now()
@@ -41,9 +41,7 @@ class MemberStatusTable(QueueMemberBase):
 
     @field_validator("paused_start_at", mode="after")
     def set_paused_start_at_None(cls, v, values):
-        if values.data["paused_reason"] == "":
-            v = None
-        return v
+        return None if not values.data["paused"] else v
 
     class Config:
         # Permite inicializar usando los nombres de campo de Pydantic o los alias
