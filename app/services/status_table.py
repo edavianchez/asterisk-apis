@@ -24,10 +24,9 @@ class StatusTable:
         peers = await ami_manager.send_action({'Action': 'SIPpeers'})
         channels = await ami_manager.send_action({'Action': 'CoreShowChannels'})
         channels = Channels.map(channels)
-        channels = {channel.channel.split(
-            "-")[0].replace("SIP/", "ext. "): channel for channel in channels}
+        channels = {channel.channel: channel for channel in channels}
         peers = SipPeers.map(peers)
-        peers = {f"ext. {peer.objectname}": peer for peer in peers}
+        peers = {peer.objectname: peer for peer in peers}
         for item in items:
             if item.event == "QueueMember":
                 member_model = MemberStatusTable.model_validate(item)
@@ -128,15 +127,14 @@ class StatusTable:
         return [member.model_dump() for member in self.__members_table.values() if member.queue in queue_names]
 
     async def reload(self, ami_manager: Manager):
-        self.__queued_calls = []
         items = await ami_manager.send_action({'Action': 'QueueStatus'})
         peers = await ami_manager.send_action({'Action': 'SIPpeers'})
         channels = await ami_manager.send_action({'Action': 'CoreShowChannels'})
         channels = Channels.map(channels)
-        channels = {channel.channel.split(
-            "-")[0].replace("SIP/", "ext. "): channel for channel in channels}
+        channels = {channel.channel: channel for channel in channels}
         peers = SipPeers.map(peers)
-        peers = {f"ext. {peer.objectname}": peer for peer in peers}
+        peers = {peer.objectname: peer for peer in peers}
+        self.__queued_calls = []
         for item in items:
             if item.event == "QueueMember":
                 member_event = MemberStatusTable.model_validate(item)

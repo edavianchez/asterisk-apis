@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Optional
 from enum import IntEnum
 
@@ -54,6 +54,10 @@ class Channel(BaseModel):
     @computed_field
     def channel_state_name(self) -> str:
         return ChannelState(self.channel_state).friendly_name
+
+    @field_validator("channel")
+    def parce_channel(cls, value):
+        return value.split("-")[0].replace("SIP/", "ext. ")
 
     class Config:
         # Permite inicializar usando los nombres de campo de Pydantic o los alias
