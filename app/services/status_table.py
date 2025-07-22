@@ -9,9 +9,6 @@ from app.schemas.responses.hold import Hold
 from app.schemas.responses.unhold import UnHold
 from app.schemas.responses.queue_member_pause import QueueMemberPause
 from app.schemas.responses.hangup import Hangup
-from app.core.config import settings
-
-logger = settings.logger
 
 
 class StatusTable:
