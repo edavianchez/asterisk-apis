@@ -341,6 +341,9 @@ class StatusTable:
         location = model.location
         table_location = f"{location}/{model.queue}"
         member_table = self.__members_table[table_location]
+        if model.paused != member_table.paused:
+            member_table.paused = model.paused
+            member_table.paused_reason = model.paused_reason
         member_table.name = model.name
         member_table.status = model.status
         if location in peers:
