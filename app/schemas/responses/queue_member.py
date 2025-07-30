@@ -13,6 +13,7 @@ class MemberState(IntEnum):
     RINGING = 6         # Llamando
     RINGINUSE = 7       # Recibiendo nueva llamada mientras ya tiene una activa
     ONHOLD = 8          # En espera
+    INPAUSE = 9         # En pausa
 
     @property
     def friendly_name(self):
@@ -26,6 +27,7 @@ class MemberState(IntEnum):
             6: "Llamando",
             7: "Llamando (mientras esta en llamada)",
             8: "En espera",
+            9: "En pausa"
         }
         return names[self.value]
 
@@ -58,6 +60,10 @@ class QueueMemberBase(BaseModel):
     @field_validator("paused_reason")
     def parse_paused_reason(cls, value):
         return "N/A" if value == "" else value
+
+    @field_validator("status", mode="after")
+    def set_status(cls, v, values):
+        return MemberState.INPAUSE.value if values.data["paused"] else v
 
 
 class QueueMember(QueueMemberBase):
