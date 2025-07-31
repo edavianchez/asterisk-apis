@@ -1,6 +1,6 @@
 from typing import Optional
 from app.schemas.responses.queue_member import QueueMemberBase
-from pydantic import computed_field, field_validator
+from pydantic import computed_field, field_validator, Field
 from datetime import datetime
 
 

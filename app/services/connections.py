@@ -72,6 +72,9 @@ class ConnectionManager:
             except (OSError, RuntimeError, asyncio.TimeoutError) as e:
                 logger.error("Error ASCCS2 crítico en AMI: %s", str(e))
                 await asyncio.sleep(10)
+            except Exception as e:
+                logger.error("Error ASCCS3 inesperado en AMI: %s", str(e))
+                await asyncio.sleep(10)
 
     async def handle_asterisk_event(self, event):
         """Handles incoming Asterisk events and updates the status table accordingly.
