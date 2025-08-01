@@ -23,10 +23,10 @@ class MemberState(IntEnum):
             2: "En llamada",
             3: "Ocupado",
             4: "Inválido",
-            5: "No disponible",
+            5: "Desconectado",
             6: "Llamando",
             7: "Llamando (mientras esta en llamada)",
-            8: "En espera",
+            8: "On Hold",
             9: "En pausa"
         }
         return names[self.value]
@@ -42,6 +42,7 @@ class QueueMemberBase(BaseModel):
     paused_reason: str = Field(..., alias='pausedreason')
     queue: str = Field(..., alias='queue')
     status: int = Field(..., alias='status')
+    campaigns: list[str] = []
 
     @computed_field()
     def status_name(self) -> str:
@@ -64,6 +65,12 @@ class QueueMemberBase(BaseModel):
     @field_validator("status", mode="after")
     def set_status(cls, v, values):
         return MemberState.INPAUSE.value if values.data["paused"] else v
+
+    class Config:
+        # Permite inicializar usando los nombres de campo de Pydantic o los alias
+        populate_by_name = True
+        # Ignora cualquier campo en el mensaje de Panoramisk que no esté en este modelo
+        extra = "ignore"
 
 
 class QueueMember(QueueMemberBase):

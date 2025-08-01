@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, computed_field
 from typing import Optional
 
 
@@ -21,6 +21,11 @@ class QueueEntry(BaseModel):
             minutes = value // 60
             seconds = value % 60
             return f"{minutes:02d}:{seconds:02d}"
+
+    @computed_field
+    def campaign(self) -> str:
+        """Devuelve el nombre de la campaña (cola)"""
+        return self.queue.replace("Q", "")
 
     class Config:
         # Permite inicializar usando los nombres de campo de Pydantic o los alias

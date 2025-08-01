@@ -1,3 +1,5 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from panoramisk import Manager
 
 from app.schemas.responses.member_status_table import MemberStatusTable
@@ -54,11 +56,16 @@ class StatusTable:
         for item in items:
             if item.event == "QueueMember":
                 member_model = MemberStatusTable.model_validate(item)
+                member_model.campaigns = [member_model.campaign]
                 member_model = self.__set_peers_and_channels(
                     member_model, peers, channels
                 )
-                table_location = f"{member_model.location}/{member_model.queue}"
-                self.__members_table[table_location] = member_model
+                if member_model.location not in self.__members_table:
+                    self.__members_table[member_model.location] = member_model
+                else:
+                    self.__update_member(
+                        member_model, peers, channels
+                    )
             if item.event == "QueueEntry":
                 call = QueueEntry.model_validate(item)
                 self.__queued_calls.append(call)
@@ -84,7 +91,7 @@ class StatusTable:
         return {
             MemberState.BUSY.name: {
                 "count": len([
-                    member for member in data if member["status"] == MemberState.BUSY.value
+                    member for member in data if member["status"] in [MemberState.BUSY.value, MemberState.INPAUSE.value]
                 ]),
                 "id": MemberState.BUSY.value,
                 "friendly_name": MemberState.BUSY.friendly_name
@@ -145,7 +152,7 @@ class StatusTable:
                 "id": MemberState.UNKNOWN.value,
                 "friendly_name": MemberState.UNKNOWN.friendly_name
             },
-            "INPAUSE": {
+            MemberState.INPAUSE.name: {
                 "count": len([member for member in data if member["paused"]]),
                 "friendly_name": "En pausa"
             },
@@ -157,9 +164,10 @@ class StatusTable:
                         MemberState.RINGING.value,
                         MemberState.RINGINUSE.value,
                         MemberState.ONHOLD.value,
-                        MemberState.INUSE.value
+                        MemberState.INUSE.value,
+                        MemberState.INPAUSE.value
                     ]
-                ]) + len([member for member in data if member["paused"]]),
+                ]),
                 "friendly_name": "Total en linea."
             }
         }
@@ -175,7 +183,14 @@ class StatusTable:
             list[dict]: List of member dictionaries belonging to the specified queues,
                        with each member's data converted to a dictionary format
         """
-        return [member.model_dump() for member in self.__members_table.values() if member.queue in queue_names]
+        queue_names = [queue_name.replace("Q", "")
+                       for queue_name in queue_names]
+        queue_names = set(queue_names)
+        return [
+            member.model_dump() for member in self.__members_table.values() if len(
+                list(set(member.campaigns) & queue_names)
+            )
+        ]
 
     async def reload(self, ami_manager: Manager):
         """
@@ -202,12 +217,13 @@ class StatusTable:
         channels = {channel.channel: channel for channel in channels}
         peers = SipPeers.map(peers)
         peers = {peer.objectname: peer for peer in peers}
+        items_exts = []
         self.__queued_calls = []
         for item in items:
             if item.event == "QueueMember":
                 member_event = MemberStatusTable.model_validate(item)
-                location = f"{member_event.location}/{member_event.queue}"
-                if location in self.__members_table:
+                member_event.campaigns = [member_event.campaign]
+                if member_event.location in self.__members_table:
                     self.__update_member(
                         member_event, peers, channels
                     )
@@ -215,10 +231,12 @@ class StatusTable:
                     member_event = self.__set_peers_and_channels(
                         member_event, peers, channels
                     )
-                    self.__members_table[location] = member_event
+                    self.__members_table[member_event.location] = member_event
+                items_exts.append(member_event.location)
             if item.event == "QueueEntry":
                 call = QueueEntry.model_validate(item)
                 self.__queued_calls.append(call)
+        self.set_disconnect_status(items_exts)
 
     def call_filter(self, queue_names: list[str]) -> list[dict]:
         """
@@ -254,8 +272,7 @@ class StatusTable:
         for member in self.__members_table.values():
             if location == member.location:
                 member.hold_start_at = hold.timestamp
-                table_location = f"{location}/{member.queue}"
-                self.__members_table[table_location] = member
+                self.__members_table[location] = member
 
     def set_unhold(self, event) -> None:
         """
@@ -278,8 +295,7 @@ class StatusTable:
         for member in self.__members_table.values():
             if location == member.location:
                 member.hold_start_at = None
-                table_location = f"{location}/{member.queue}"
-                self.__members_table[table_location] = member
+                self.__members_table[location] = member
 
     def __set_peers_and_channels(
         self,
@@ -339,8 +355,10 @@ class StatusTable:
         - Updates the members table with the modified record
         """
         location = model.location
-        table_location = f"{location}/{model.queue}"
-        member_table = self.__members_table[table_location]
+        member_table = self.__members_table[location]
+        member_table.campaigns = list(
+            set(member_table.campaigns + model.campaigns)
+        )
         if model.paused != member_table.paused:
             member_table.paused = model.paused
             member_table.paused_reason = model.paused_reason
@@ -360,7 +378,7 @@ class StatusTable:
             member_table.call_status = "N/A"
             member_table.duration = "N/A"
             member_table.phone_number = "N/A"
-        self.__members_table[table_location] = member_table
+        self.__members_table[location] = member_table
 
     def add_pause(self, event) -> None:
         """
@@ -384,7 +402,7 @@ class StatusTable:
         - Updates the members table with modified record
         """
         pause = QueueMemberPause.model_validate(event)
-        location = f"{pause.location}/{pause.queue}"
+        location = pause.location
         if location in self.__members_table:
             member = self.__members_table[location]
             member.paused = pause.paused
@@ -413,8 +431,7 @@ class StatusTable:
         for member in self.__members_table.values():
             if location == member.location:
                 member.hold_start_at = None
-                table_location = f"{location}/{member.queue}"
-                self.__members_table[table_location] = member
+                self.__members_table[location] = member
 
     def unique_values(self, data: list[dict]) -> list[dict]:
         """
@@ -456,7 +473,7 @@ class StatusTable:
                 - count_queued_calls: Count of queued calls
         """
         data_filtered = self.filter(queues)
-        data_filtered = self.unique_values(data_filtered)
+        # data_filtered = self.unique_values(data_filtered)
         call_filtered = self.get_queued_calls(queues)
         return {
             "data_table": data_filtered,
@@ -486,3 +503,24 @@ class StatusTable:
             "queued_calls": call_filtered,
             "count_queued_calls": len(call_filtered)
         }
+
+    def set_disconnect_status(self, connected_members: list) -> None:
+        """
+        Sets the disconnect status for all members in the members table.
+
+        This method iterates through all members and sets their status to 'DISCONNECTED'.
+        It is typically used when a member is no longer active or has been removed from the system.
+        """
+        for member in self.__members_table.values():
+            if member.location in connected_members:
+                if not member.is_connected:
+                    member.is_connected = True
+                    member.last_connection = "N/A"
+                self.__members_table[member.location] = member
+            else:
+                if member.is_connected:
+                    member.is_connected = False
+                    member.status = MemberState.UNAVAILABLE.value
+                    member.last_connection = datetime.now(ZoneInfo("America/Bogota"))\
+                        .strftime("%d/%b/%y %H:%M:%S")
+                    self.__members_table[member.location] = member
