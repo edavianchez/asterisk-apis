@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from panoramisk import Manager
 
 from app.schemas.responses.member_status_table import MemberStatusTable
@@ -514,13 +515,12 @@ class StatusTable:
             if member.location in connected_members:
                 if not member.is_connected:
                     member.is_connected = True
-                    member.last_connection = datetime.now("America/Bogota")\
-                        .strftime("%d/%b/%y %H:%M:%S")
+                    member.last_connection = "N/A"
                 self.__members_table[member.location] = member
             else:
                 if member.is_connected:
                     member.is_connected = False
                     member.status = MemberState.UNAVAILABLE.value
-                    member.last_connection = datetime.now("America/Bogota")\
+                    member.last_connection = datetime.now(ZoneInfo("America/Bogota"))\
                         .strftime("%d/%b/%y %H:%M:%S")
                     self.__members_table[member.location] = member
