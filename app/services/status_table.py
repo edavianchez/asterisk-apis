@@ -1,3 +1,4 @@
+from datetime import datetime
 from panoramisk import Manager
 
 from app.schemas.responses.member_status_table import MemberStatusTable
@@ -234,9 +235,7 @@ class StatusTable:
             if item.event == "QueueEntry":
                 call = QueueEntry.model_validate(item)
                 self.__queued_calls.append(call)
-        self.__members_table = {
-            member.location: member for member in self.__members_table.values() if member.location in items_exts
-        }
+        self.set_disconnect_status(items_exts)
 
     def call_filter(self, queue_names: list[str]) -> list[dict]:
         """
@@ -503,3 +502,25 @@ class StatusTable:
             "queued_calls": call_filtered,
             "count_queued_calls": len(call_filtered)
         }
+
+    def set_disconnect_status(self, connected_members: list) -> None:
+        """
+        Sets the disconnect status for all members in the members table.
+
+        This method iterates through all members and sets their status to 'DISCONNECTED'.
+        It is typically used when a member is no longer active or has been removed from the system.
+        """
+        for member in self.__members_table.values():
+            if member.location in connected_members:
+                if not member.is_connected:
+                    member.is_connected = True
+                    member.last_connection = datetime.now("America/Bogota")\
+                        .strftime("%d/%b/%y %H:%M:%S")
+                self.__members_table[member.location] = member
+            else:
+                if member.is_connected:
+                    member.is_connected = False
+                    member.status = MemberState.UNAVAILABLE.value
+                    member.last_connection = datetime.now("America/Bogota")\
+                        .strftime("%d/%b/%y %H:%M:%S")
+                    self.__members_table[member.location] = member

@@ -26,7 +26,7 @@ class MemberState(IntEnum):
             5: "Desconectado",
             6: "Llamando",
             7: "Llamando (mientras esta en llamada)",
-            8: "En espera",
+            8: "On Hold",
             9: "En pausa"
         }
         return names[self.value]

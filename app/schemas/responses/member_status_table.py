@@ -1,6 +1,6 @@
 from typing import Optional
 from app.schemas.responses.queue_member import QueueMemberBase
-from pydantic import computed_field, field_validator, Field
+from pydantic import computed_field, field_validator, ValidationInfo
 from datetime import datetime
 
 
@@ -12,6 +12,8 @@ class MemberStatusTable(QueueMemberBase):
     call_status: Optional[str] = "N/A"
     hold_start_at: Optional[str | None] = None
     paused_start_at: Optional[str | None] = None
+    is_connected: bool = True
+    last_connection: Optional[str] = "N/A"
 
     @computed_field()
     def hold_time(self) -> str:
@@ -40,6 +42,7 @@ class MemberStatusTable(QueueMemberBase):
         return pause_time
 
     @field_validator("paused_start_at", mode="after")
+    @classmethod
     def set_paused_start_at_None(cls, v, values):
         return None if not values.data["paused"] else v
 
