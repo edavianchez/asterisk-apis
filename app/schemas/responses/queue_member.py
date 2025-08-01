@@ -42,7 +42,7 @@ class QueueMemberBase(BaseModel):
     paused_reason: str = Field(..., alias='pausedreason')
     queue: str = Field(..., alias='queue')
     status: int = Field(..., alias='status')
-    queues: list[str] = []
+    campaigns: list[str] = []
 
     @computed_field()
     def status_name(self) -> str:

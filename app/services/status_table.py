@@ -54,7 +54,7 @@ class StatusTable:
         for item in items:
             if item.event == "QueueMember":
                 member_model = MemberStatusTable.model_validate(item)
-                member_model.queues = [member_model.queue]
+                member_model.campaigns = [member_model.campaign]
                 member_model = self.__set_peers_and_channels(
                     member_model, peers, channels
                 )
@@ -181,7 +181,14 @@ class StatusTable:
             list[dict]: List of member dictionaries belonging to the specified queues,
                        with each member's data converted to a dictionary format
         """
-        return [member.model_dump() for member in self.__members_table.values() if member.queue in queue_names]
+        queue_names = [queue_name.replace("Q", "")
+                       for queue_name in queue_names]
+        queue_names = set(queue_names)
+        return [
+            member.model_dump() for member in self.__members_table.values() if len(
+                list(set(member.campaigns) & queue_names)
+            )
+        ]
 
     async def reload(self, ami_manager: Manager):
         """
@@ -213,6 +220,7 @@ class StatusTable:
         for item in items:
             if item.event == "QueueMember":
                 member_event = MemberStatusTable.model_validate(item)
+                member_event.campaigns = [member_event.campaign]
                 if member_event.location in self.__members_table:
                     self.__update_member(
                         member_event, peers, channels
@@ -348,7 +356,9 @@ class StatusTable:
         """
         location = model.location
         member_table = self.__members_table[location]
-        member_table.queues = list(set(member_table.queues + model.queues))
+        member_table.campaigns = list(
+            set(member_table.campaigns + model.campaigns)
+        )
         if model.paused != member_table.paused:
             member_table.paused = model.paused
             member_table.paused_reason = model.paused_reason
