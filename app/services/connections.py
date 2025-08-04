@@ -1,74 +1,41 @@
 import asyncio
-import json
-from typing import Any
-from fastapi import WebSocket
 from panoramisk import Manager
 
 from app.core.config import settings
 from app.services.status_table import StatusTable
+from app.services.websockets import WebSocketManager
 
 logger = settings.logger
 ami = settings.asterisk.ami
 
 
 class ConnectionManager:
+    """Manages AMI (Asterisk Manager Interface) connections and related event handling.
+
+    This class is responsible for:
+    - Establishing and maintaining AMI connections
+    - Handling Asterisk events (Hold, Unhold, QueueMemberPause, Hangup)
+    - Managing the status table updates
+    - Coordinating WebSocket connections
+    """
+
     def __init__(self):
-        self.active_connections: list[dict[str, Any]] = []
         self.ami_manager = None
         self.connection_task = None
-        self.__status_table = StatusTable()
-
-    async def add_websocket(self, websocket: WebSocket, rrhh_id: int):
-        self.active_connections.append({
-            "ws": websocket,
-            "rrhh_id": rrhh_id,
-            "queues": []
-        })
-        logger.info(
-            f"WebSocket añadido. Total: {len(self.active_connections)}"
-        )
-
-    def remove_websocket(self, rrhh_id: int):
-        for ws_item in self.active_connections:
-            if ws_item["rrhh_id"] == rrhh_id:
-                self.active_connections.remove(ws_item)
-                break
-        logger.info(
-            f"WebSocket removido. Total: {len(self.active_connections)}"
-        )
-
-    async def send(self, ws: dict[str, Any]):
-        data_filtered = self.__status_table.filter(ws["queues"])
-        data_filtered = self.__status_table.unique_values(data_filtered)
-        call_filtered = self.__status_table.call_filter(ws["queues"])
-        data = {
-            "data_table": data_filtered,
-            "total_rows": len(data_filtered),
-            "counts": self.__status_table.count_by_state(data_filtered),
-            "queued_calls": call_filtered,
-            "count_queued_calls": len(call_filtered)
-        }
-        await ws["ws"].send_json(data)
-
-    # async def add_queues_to_send(self, rrhh_id: int, queues: list[str]):
-    #     for ws in self.active_connections:
-    #         if ws["rrhh_id"] == rrhh_id:
-    #             ws["queues"] = queues
-    #             if ws["queues"]:
-    #                 await self.send(ws)
-
-    # async def broadcast(self):
-    #     for ws in self.active_connections:
-    #         try:
-    #             if ws["queues"]:
-    #                 logger.info("Enviando mensaje ...")
-    #                 await self.send(ws)
-    #                 logger.info("Mensaje enviado.")
-    #         except Exception as e:
-    #             logger.error(f"Error ASCCB56 enviando mensaje: {str(e)}")
-    #             self.remove_websocket(ws)
+        self.status_table = StatusTable()
+        self.websockets = WebSocketManager()
 
     async def start_ami_connection(self):
+        """Establishes and maintains the Asterisk Manager Interface (AMI) connection.
+
+        This method:
+        - Creates an AMI manager instance with configured credentials
+        - Registers event handlers for Hold, Unhold, QueueMemberPause and Hangup events
+        - Continuously tries to maintain the connection, reconnecting if needed
+        - Loads and periodically reloads the status table data
+
+        The connection loop continues until explicitly cancelled.
+        """
         self.ami_manager = Manager(
             host=ami.host,
             port=ami.port,
@@ -90,37 +57,53 @@ class ConnectionManager:
                     logger.info("Conectando a Asterisk AMI...")
                     await self.ami_manager.connect()
                     logger.info("✅ Conexión AMI establecida")
-                    await self.__status_table.load_data(self.ami_manager)
+                    await self.status_table.load_data(self.ami_manager)
 
                 await asyncio.sleep(1)
-                await self.__status_table.reload(self.ami_manager)
+                await self.status_table.reload(self.ami_manager)
 
             except ConnectionError as e:
                 logger.warning(
-                    f"Error ASCCS1 de conexión AMI: {str(e)}. Reconectando...")
+                    "Error ASCCS1 de conexión AMI: %s. Reconectando...", str(e))
                 await asyncio.sleep(5)
             except asyncio.CancelledError:
                 logger.info("Conexión AMI cancelada")
                 break
+            except (OSError, RuntimeError, asyncio.TimeoutError) as e:
+                logger.error("Error ASCCS2 crítico en AMI: %s", str(e))
+                await asyncio.sleep(10)
             except Exception as e:
-                logger.error(f"Error ASCCS2 crítico en AMI: {str(e)}")
+                logger.error("Error ASCCS3 inesperado en AMI: %s", str(e))
                 await asyncio.sleep(10)
 
     async def handle_asterisk_event(self, event):
+        """Handles incoming Asterisk events and updates the status table accordingly.
+
+        This method processes different types of Asterisk events (Hold, Unhold, 
+        QueueMemberPause, Hangup) and delegates the appropriate action to the status table.
+
+        Args:
+            event: The Asterisk event object containing event type and related data
+
+        Raises:
+            ValueError: If event data is invalid
+            KeyError: If required event fields are missing
+            AttributeError: If event object is malformed
+        """
         try:
             match event.event:
                 case "Hold":
-                    self.__status_table.set_hold_time(event)
+                    self.status_table.set_hold_time(event)
                 case "Unhold":
-                    self.__status_table.set_unhold(event)
+                    self.status_table.set_unhold(event)
                 case "QueueMemberPause":
-                    self.__status_table.add_pause(event)
+                    self.status_table.add_pause(event)
                 case "Hangup":
-                    self.__status_table.listen_hangup(event)
+                    self.status_table.listen_hangup(event)
                 case "ExtensionStatus":
-                    logger.info(f"{event.event}: {event}")
-        except Exception as e:
-            logger.error(f"Error ASCCH1 procesando evento: {str(e)}")
+                    logger.info("%s: %s", event.event, event)
+        except (ValueError, KeyError, AttributeError) as e:
+            logger.error("Error ASCCH1 procesando evento: %s", str(e))
 
     async def start(self):
         """Inicia la conexión AMI en segundo plano"""
@@ -146,21 +129,15 @@ class ConnectionManager:
                     if self.ami_manager._connected:
                         self.ami_manager.close()
                         logger.info("Conexión AMI cerrada")
-                except Exception as e:
+                except (ConnectionError, OSError) as e:
                     logger.error(
-                        f"Error ASCCC1 cerrando conexión AMI: {str(e)}")
+                        "Error ASCCC1 cerrando conexión AMI: %s", str(e)
+                    )
                 finally:
                     self.ami_manager = None
 
             # Cerrar todas las conexiones WebSocket
-            for ws_item in self.active_connections:
-                try:
-                    await ws_item["ws"].close()
-                except Exception:
-                    pass
-                self.self.active_connections.remove(ws_item)
+            self.websockets.close_and_remove_connections()
 
-            logger.info("Todas las conexiones cerradas")
-
-        except Exception as e:
-            logger.error(f"Error ASCCC2 en cierre: {str(e)}")
+        except (RuntimeError, OSError) as e:
+            logger.error("Error ASCCC2 en cierre: %s", str(e))
