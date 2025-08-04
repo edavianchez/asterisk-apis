@@ -41,6 +41,10 @@ class MemberStatusTable(QueueMemberBase):
             pause_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         return pause_time
 
+    @computed_field()
+    def extension(self) -> str:
+        return self.location.replace("ext. ", "")
+
     @field_validator("paused_start_at", mode="after")
     @classmethod
     def set_paused_start_at_None(cls, v, values):
