@@ -186,11 +186,11 @@ class StatusTable:
         queue_names = [queue_name.replace("Q", "")
                        for queue_name in queue_names]
         queue_names = set(queue_names)
-        return [
-            member.model_dump() for member in self.__members_table.values() if len(
+        return {
+            member.location.replace("ext. ", ""): member.model_dump() for member in self.__members_table.values() if len(
                 list(set(member.campaigns) & queue_names)
             )
-        ]
+        }
 
     async def reload(self, ami_manager: Manager):
         """
