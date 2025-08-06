@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 from panoramisk import Manager
 
 from app.schemas.responses.member_status_table import MemberStatusTable
-from app.schemas.responses.queue_member import MemberState
+from app.schemas.responses.queue_member import AgentState
 from app.services.sip_peers import SipPeers, SipPeer
 from app.services.channels import Channels, Channel
 from app.schemas.responses.queue_entry import QueueEntry
@@ -56,6 +56,8 @@ class StatusTable:
         for item in items:
             if item.event == "QueueMember":
                 member_model = MemberStatusTable.model_validate(item)
+                if member_model.status == AgentState.UNKNOWN.value:
+                    continue
                 member_model.campaigns = [member_model.campaign]
                 member_model = self.__set_peers_and_channels(
                     member_model, peers, channels
@@ -89,83 +91,57 @@ class StatusTable:
         special states like INPAUSE and ONLINE (total members online).
         """
         return {
-            MemberState.BUSY.name: {
+            AgentState.AVAILABLE.name: {
                 "count": len([
-                    member for member in data if member["status"] in [MemberState.BUSY.value]
+                    member for member in data if member["status"] == AgentState.AVAILABLE.value
                 ]),
-                "id": MemberState.BUSY.value,
-                "friendly_name": MemberState.BUSY.friendly_name
+                "id": AgentState.AVAILABLE.value,
+                "friendly_name": AgentState.AVAILABLE.friendly_name
             },
-            MemberState.INUSE.name: {
+            AgentState.CALLING.name: {
                 "count": len([
-                    member for member in data if member["status"] == MemberState.INUSE.value
+                    member for member in data if member["status"] == AgentState.CALLING.value
                 ]),
-                "id": MemberState.INUSE.value,
-                "friendly_name": MemberState.INUSE.friendly_name
+                "id": AgentState.CALLING.value,
+                "friendly_name": AgentState.CALLING.friendly_name
             },
-            MemberState.INVALID.name: {
+            AgentState.DISCONNECTED.name: {
                 "count": len([
-                    member for member in data if member["status"] == MemberState.INVALID.value
+                    member for member in data if member["status"] == AgentState.DISCONNECTED.value
                 ]),
-                "id": MemberState.INVALID.value,
-                "friendly_name": MemberState.INVALID.friendly_name
+                "id": AgentState.DISCONNECTED.value,
+                "friendly_name": AgentState.DISCONNECTED.friendly_name
             },
-            MemberState.NOT_INUSE.name: {
+            AgentState.IN_PAUSE.name: {
                 "count": len([
-                    member for member in data if member["status"] == MemberState.NOT_INUSE.value
+                    member for member in data if member["status"] == AgentState.IN_PAUSE.value
                 ]),
-                "id": MemberState.NOT_INUSE.value,
-                "friendly_name": MemberState.NOT_INUSE.friendly_name
+                "id": AgentState.IN_PAUSE.value,
+                "friendly_name": AgentState.IN_PAUSE.friendly_name
             },
-            MemberState.ONHOLD.name: {
+            AgentState.ON_CALL.name: {
                 "count": len([
-                    member for member in data if member["status"] == MemberState.ONHOLD.value
+                    member for member in data if member["status"] == AgentState.ON_CALL.value
                 ]),
-                "id": MemberState.ONHOLD.value,
-                "friendly_name": MemberState.ONHOLD.friendly_name
+                "id": AgentState.ON_CALL.value,
+                "friendly_name": AgentState.ON_CALL.friendly_name
             },
-            MemberState.RINGING.name: {
+            AgentState.ON_HOLD.name: {
                 "count": len([
-                    member for member in data if member["status"] == MemberState.RINGING.value
+                    member for member in data if member["status"] == AgentState.ON_HOLD.value
                 ]),
-                "id": MemberState.RINGING.value,
-                "friendly_name": MemberState.RINGING.friendly_name
-            },
-            MemberState.RINGINUSE.name: {
-                "count": len([
-                    member for member in data if member["status"] == MemberState.RINGINUSE.value
-                ]),
-                "id": MemberState.RINGINUSE.value,
-                "friendly_name": MemberState.RINGINUSE.friendly_name
-            },
-            MemberState.UNAVAILABLE.name: {
-                "count": len([
-                    member for member in data if member["status"] == MemberState.UNAVAILABLE.value
-                ]),
-                "id": MemberState.UNAVAILABLE.value,
-                "friendly_name": MemberState.UNAVAILABLE.friendly_name
-            },
-            MemberState.UNKNOWN.name: {
-                "count": len([
-                    member for member in data if member["status"] == MemberState.UNKNOWN.value
-                ]),
-                "id": MemberState.UNKNOWN.value,
-                "friendly_name": MemberState.UNKNOWN.friendly_name
-            },
-            MemberState.INPAUSE.name: {
-                "count": len([member for member in data if member["paused"]]),
-                "friendly_name": "En pausa"
+                "id": AgentState.ON_HOLD.value,
+                "friendly_name": AgentState.ON_HOLD.friendly_name
             },
             "ONLINE": {
                 "count": len([
                     member for member in data if member["status"] in [
-                        MemberState.NOT_INUSE.value,
-                        MemberState.BUSY.value,
-                        MemberState.RINGING.value,
-                        MemberState.RINGINUSE.value,
-                        MemberState.ONHOLD.value,
-                        MemberState.INUSE.value,
-                        MemberState.INPAUSE.value
+                        AgentState.AVAILABLE.value,
+                        AgentState.CALLING.value,
+                        AgentState.ON_HOLD.value,
+                        AgentState.ON_CALL.value,
+                        AgentState.IN_PAUSE.value,
+                        AgentState.value
                     ]
                 ]),
                 "friendly_name": "Total en linea."
@@ -222,6 +198,8 @@ class StatusTable:
         for item in items:
             if item.event == "QueueMember":
                 member_event = MemberStatusTable.model_validate(item)
+                if member_event.status == AgentState.UNKNOWN.value:
+                    continue
                 member_event.campaigns = [member_event.campaign]
                 if member_event.location in self.__members_table:
                     self.__update_member(
@@ -473,7 +451,6 @@ class StatusTable:
                 - count_queued_calls: Count of queued calls
         """
         data_filtered = self.filter(queues)
-        # data_filtered = self.unique_values(data_filtered)
         call_filtered = self.get_queued_calls(queues)
         return {
             "data_table": data_filtered,

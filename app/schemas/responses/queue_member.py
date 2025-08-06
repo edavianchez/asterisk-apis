@@ -13,21 +13,26 @@ class MemberState(IntEnum):
     RINGING = 6         # Llamando
     RINGINUSE = 7       # Recibiendo nueva llamada mientras ya tiene una activa
     ONHOLD = 8          # En espera
-    INPAUSE = 9         # En pausa
+
+
+class AgentState(IntEnum):
+    UNKNOWN = 0         # Estado desconocido
+    AVAILABLE = 1       # Alias para estado disponible
+    ON_CALL = 2         # Alias para estado en llamada
+    CALLING = 3         # Alias para estado llamando
+    IN_PAUSE = 4        # Alias para estado en pausa
+    DISCONNECTED = 5    # Alias para estado no disponible
+    ON_HOLD = 6         # Alias para estado en espera
 
     @property
     def friendly_name(self):
         names = {
-            0: "Desconocido",
             1: "Disponible",
             2: "En llamada",
-            3: "Ocupado",
-            4: "Inválido",
+            3: "Llamando",
+            4: "En pausa",
             5: "Desconectado",
-            6: "Llamando",
-            7: "Llamando (mientras esta en llamada)",
-            8: "On Hold",
-            9: "En pausa"
+            6: "On Hold"
         }
         return names[self.value]
 
@@ -47,7 +52,7 @@ class QueueMemberBase(BaseModel):
     @computed_field()
     def status_name(self) -> str:
         """Devuelve el nombre del estado como texto"""
-        return MemberState(self.status).friendly_name
+        return AgentState(self.status).friendly_name
 
     @computed_field()
     def campaign(self) -> str:
@@ -64,7 +69,22 @@ class QueueMemberBase(BaseModel):
 
     @field_validator("status", mode="after")
     def set_status(cls, v, values):
-        return MemberState.INPAUSE.value if values.data["paused"] else v
+        match v:
+            case MemberState.UNAVAILABLE.value:
+                v = AgentState.DISCONNECTED.value
+            case MemberState.NOT_INUSE.value:
+                v = AgentState.AVAILABLE.value
+            case MemberState.INUSE.value | MemberState.BUSY.value:
+                v = AgentState.ON_CALL.value
+            case MemberState.RINGING.value | MemberState.RINGINUSE.value:
+                v = AgentState.CALLING.value
+            case MemberState.ONHOLD.value:
+                v = AgentState.ON_HOLD.value
+            case MemberState.INVALID.value | MemberState.UNKNOWN.value:
+                v = AgentState.UNKNOWN.value
+            case _:
+                v = AgentState.UNKNOWN.value
+        return AgentState.IN_PAUSE.value if values.data["paused"] else v
 
     class Config:
         # Permite inicializar usando los nombres de campo de Pydantic o los alias
