@@ -140,8 +140,7 @@ class StatusTable:
                         AgentState.CALLING.value,
                         AgentState.ON_HOLD.value,
                         AgentState.ON_CALL.value,
-                        AgentState.IN_PAUSE.value,
-                        AgentState.value
+                        AgentState.IN_PAUSE.value
                     ]
                 ]),
                 "friendly_name": "Total en linea."
