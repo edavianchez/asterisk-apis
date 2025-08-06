@@ -91,7 +91,7 @@ class StatusTable:
         return {
             MemberState.BUSY.name: {
                 "count": len([
-                    member for member in data if member["status"] in [MemberState.BUSY.value, MemberState.INPAUSE.value]
+                    member for member in data if member["status"] in [MemberState.BUSY.value]
                 ]),
                 "id": MemberState.BUSY.value,
                 "friendly_name": MemberState.BUSY.friendly_name
