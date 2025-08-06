@@ -497,7 +497,7 @@ class StatusTable:
             else:
                 if member.is_connected:
                     member.is_connected = False
-                    member.status = MemberState.UNAVAILABLE.value
+                    member.status = AgentState.DISCONNECTED.value
                     member.last_connection = datetime.now(ZoneInfo("America/Bogota"))\
                         .strftime("%d/%b/%y %H:%M:%S")
                     self.__members_table[member.location] = member
