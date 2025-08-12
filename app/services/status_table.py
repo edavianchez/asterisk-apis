@@ -121,7 +121,10 @@ class StatusTable:
             },
             AgentState.ON_CALL.name: {
                 "count": len([
-                    member for member in data if member["status"] == AgentState.ON_CALL.value
+                    member for member in data if member["status"] in [
+                        AgentState.ON_CALL.value,
+                        AgentState.ON_HOLD.value
+                    ]
                 ]),
                 "id": AgentState.ON_CALL.value,
                 "friendly_name": AgentState.ON_CALL.friendly_name
