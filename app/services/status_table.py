@@ -2,8 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from panoramisk import Manager
 
-from app.schemas.responses.member_status_table import MemberStatusTable
-from app.schemas.responses.queue_member import AgentState
+from app.schemas.responses.queue_member import QueueMember, AgentState
 from app.services.sip_peers import SipPeers, SipPeer
 from app.services.channels import Channels, Channel
 from app.schemas.responses.queue_entry import QueueEntry
@@ -26,7 +25,7 @@ class StatusTable:
     """
 
     def __init__(self):
-        self.__members_table: dict[str, MemberStatusTable] = {}
+        self.__members_table: dict[str, QueueMember] = {}
         self.__queued_calls: list[QueueEntry] = []
 
     async def load_data(self, ami_manager: Manager):
@@ -55,7 +54,7 @@ class StatusTable:
         peers = {peer.objectname: peer for peer in peers}
         for item in items:
             if item.event == "QueueMember":
-                member_model = MemberStatusTable.model_validate(item)
+                member_model = QueueMember.model_validate(item)
                 if member_model.status == AgentState.UNKNOWN.value:
                     continue
                 member_model.campaigns = [member_model.campaign]
@@ -159,10 +158,11 @@ class StatusTable:
 
         Returns:
             list[dict]: List of member dictionaries belonging to the specified queues,
-                       with each member's data converted to a dictionary format
+                    with each member's data converted to a dictionary format
         """
-        queue_names = [queue_name.replace("Q", "")
-                       for queue_name in queue_names]
+        queue_names = [
+            queue_name.replace("Q", "") for queue_name in queue_names
+        ]
         queue_names = set(queue_names)
         return [
             member.model_dump() for member in self.__members_table.values() if len(
@@ -199,7 +199,7 @@ class StatusTable:
         self.__queued_calls = []
         for item in items:
             if item.event == "QueueMember":
-                member_event = MemberStatusTable.model_validate(item)
+                member_event = QueueMember.model_validate(item)
                 if member_event.status == AgentState.UNKNOWN.value:
                     continue
                 member_event.campaigns = [member_event.campaign]
@@ -227,7 +227,7 @@ class StatusTable:
 
         Returns:
             list[dict]: List of queued call dictionaries belonging to the specified queues,
-                       with each call's data converted to a dictionary format
+                    with each call's data converted to a dictionary format
         """
         return [call.model_dump() for call in self.__queued_calls if call.queue in queue_names]
 
@@ -251,7 +251,10 @@ class StatusTable:
         location = hold.channel
         for member in self.__members_table.values():
             if location == member.location:
+                if member.phone_number != member.last_hold_phone_number:
+                    member.hold_time_accumulator = "00:00:00"
                 member.hold_start_at = hold.timestamp
+                member.status = AgentState.ON_HOLD
                 self.__members_table[location] = member
 
     def set_unhold(self, event) -> None:
@@ -274,15 +277,17 @@ class StatusTable:
         location = unhold.channel
         for member in self.__members_table.values():
             if location == member.location:
+                member.hold_time_accumulator = member.hold_time
+                member.last_hold_phone_number = member.phone_number
                 member.hold_start_at = None
                 self.__members_table[location] = member
 
     def __set_peers_and_channels(
         self,
-        model: MemberStatusTable,
+        model: QueueMember,
         peers: dict[str, SipPeer],
         channels: dict[str, Channel]
-    ) -> MemberStatusTable:
+    ) -> QueueMember:
         """
         Sets the SIP peer and channel information for a member.
 
@@ -309,7 +314,7 @@ class StatusTable:
 
     def __update_member(
         self,
-        model: MemberStatusTable,
+        model: QueueMember,
         peers: dict[str, SipPeer],
         channels: dict[str, Channel]
     ):
@@ -358,6 +363,7 @@ class StatusTable:
             member_table.call_status = "N/A"
             member_table.duration = "N/A"
             member_table.phone_number = "N/A"
+        member_table.validate_status()
         self.__members_table[location] = member_table
 
     def add_pause(self, event) -> None:
@@ -411,6 +417,7 @@ class StatusTable:
         for member in self.__members_table.values():
             if location == member.location:
                 member.hold_start_at = None
+                member.hold_time_accumulator = "00:00:00"
                 self.__members_table[location] = member
 
     def unique_values(self, data: list[dict]) -> list[dict]:
@@ -425,7 +432,7 @@ class StatusTable:
 
         Returns:
             list[dict]: List of unique member dictionaries, with duplicates removed based
-                       on location field
+                    on location field
         """
         uniques = {member["location"]: member for member in data}
         return list(uniques.values())
@@ -502,4 +509,6 @@ class StatusTable:
                     member.status = AgentState.DISCONNECTED.value
                     member.last_connection = datetime.now(ZoneInfo("America/Bogota"))\
                         .strftime("%d/%b/%y %H:%M:%S")
+                    member.paused = False
+                    member.paused_reason = "N/A"
                     self.__members_table[member.location] = member
