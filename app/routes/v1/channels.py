@@ -1,58 +1,43 @@
-from fastapi import APIRouter, Depends, HTTPException
 from typing import Annotated
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from app.dependencies import get_conn_manager
 from app.services.connections import ConnectionManager
+from app.schemas.requests.hangup_channel_request import HangupChannelRequest
 
 router = APIRouter()
 
-class HangupChannelRequest(BaseModel):
-    channel: str
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "extension": "1001"
-            }
-        }
-
-@router.post("/channel/hangup-by-extension")
-async def hangup_by_extension(
-    req: HangupChannelRequest,
+@router.post("/channel/hangup-by-channel-sip")
+async def hangup_by_channel_sip(
+    req: Annotated[HangupChannelRequest, Body()],
     conn_manager: Annotated[ConnectionManager, Depends(get_conn_manager)]
-):
+) -> JSONResponse:
     """
-    Cuelga el canal en estado 'Up' asociado a una extensión.
+    Cuelga el canal en estado 'Up' asociado a un asesor.
     """
     try:
-        channels_response = await conn_manager.ami_manager.send_action({
+        channels = await conn_manager.ami_manager.send_action({
             "Action": "CoreShowChannels"
         })
 
-        channels = channels_response.get("Events", [])
-
-        active_channels = [
-            ch for ch in channels
-            if ch.get("CallerIDNum") == req.extension and ch.get("ChannelStateDesc") == "Up"
-        ]
-
-        if not active_channels:
-            raise HTTPException(status_code=404, detail="No se encontró canal en llamada para esa extensión")
-
-        channel_to_hangup = active_channels[0]["Channel"]
-
-        result = await conn_manager.ami_manager.send_action({
+        await conn_manager.ami_manager.send_action({
             "Action": "Hangup",
-            "Channel": channel_to_hangup
+            "Channel": req.channel_sip
         })
 
-        return {
-            "status": "success",
-            "message": f"Se colgó la llamada de la extensión {req.extension}",
-            "data": {
-                "channel": channel_to_hangup
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "status": "success",
+                "message": f"Se colgó la llamada de la extensión {req.channel_sip}",
             }
-        }
-
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al colgar el canal: {str(e)}")
+            return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "detail": f"Error al colgar el canal: {str(e)}"
+            }
+         )

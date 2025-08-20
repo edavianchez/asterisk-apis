@@ -36,6 +36,7 @@ class ChannelState(IntEnum):
 
 class Channel(BaseModel):
     account_code: str = Field(..., alias='AccountCode')
+    channel_sip: str = Field(..., alias='Channel')
     channel: str = Field(..., alias='Channel')
     channel_state: ChannelState = Field(..., alias='ChannelState')
     state_description: str = Field(..., alias='ChannelStateDesc')
@@ -50,6 +51,7 @@ class Channel(BaseModel):
     application: Optional[str] = Field(None, alias='Application')
     priority: str = Field(..., alias="Priority")
     conected_line_num: str = Field(..., alias="ConnectedLineNum")
+
 
     @computed_field
     def channel_state_name(self) -> str:

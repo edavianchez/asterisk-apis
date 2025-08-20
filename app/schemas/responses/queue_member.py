@@ -61,6 +61,7 @@ class QueueMember(BaseModel):
     last_hold_phone_number: str = "N/A"
     status: int = Field(..., alias='Status')
     campaigns: list[str] = []
+    channel_sip: str | None = None
 
     @field_validator("paused_start_at", mode="after")
     def set_paused_start_at_None(cls, v, values):
