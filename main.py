@@ -15,7 +15,7 @@ if not settings.debug:
     app.openapi_url = None
     app.redoc_url = None
 app.add_middleware(ErrorHandler)
-app.add_middleware(JWTMiddleware)
+#app.add_middleware(JWTMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
