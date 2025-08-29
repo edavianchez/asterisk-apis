@@ -310,6 +310,7 @@ class StatusTable:
             model.call_status = channels[location].channel_state_name
             model.duration = channels[location].duration
             model.phone_number = channels[location].conected_line_num
+            model.channel_sip = channels[location].channel_sip
         return model
 
     def __update_member(
@@ -359,10 +360,12 @@ class StatusTable:
             member_table.call_status = channels[location].channel_state_name
             member_table.duration = channels[location].duration
             member_table.phone_number = channels[location].conected_line_num
+            member_table.channel_sip = channels[location].channel_sip
         else:
             member_table.call_status = "N/A"
             member_table.duration = "N/A"
             member_table.phone_number = "N/A"
+            member_table.channel_sip = None
         member_table.validate_status()
         self.__members_table[location] = member_table
 
