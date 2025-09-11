@@ -464,12 +464,14 @@ class StatusTable:
         """
         data_filtered = self.filter(queues)
         call_filtered = self.get_queued_calls(queues)
+        campaigns_stats = self.set_queues_info_per_member()
         return {
             "data_table": data_filtered,
             "total_rows": len(data_filtered),
             "counts": self.count_by_state(data_filtered),
             "queued_calls": call_filtered["queued_calls"],
-            "count_queued_calls": call_filtered["count_queued_calls"]
+            "count_queued_calls": call_filtered["count_queued_calls"],
+            "queues_stats" : list(campaigns_stats.values())
         }
 
     def get_queued_calls(self, queues: list[str]) -> dict:
@@ -515,3 +517,35 @@ class StatusTable:
                     member.paused = False
                     member.paused_reason = "N/A"
                     self.__members_table[member.location] = member
+
+    def set_queues_info_per_member(self) -> dict[str, dict]:
+        """
+        Construye un dict con métricas por cola.
+        """
+        campaigns: dict[str, dict] = {}
+
+        # contar llamadas en cola
+        for call in self.__queued_calls:
+            # Normalizamos el id de la queue (quita solo la Q inicial si la tiene)
+            campaign_id = call.queue.lstrip("Q")
+            if campaign_id not in campaigns:
+                campaigns[campaign_id] = {
+                    "id": campaign_id,
+                    "queued_calls": 0,
+                    "available_agents": 0
+                }
+            campaigns[campaign_id]["queued_calls"] += 1
+    
+        # contar agentes disponibles
+        for member in self.__members_table.values():
+            campaign_id = member.campaign  # ya devuelve sin "Q"
+            if campaign_id not in campaigns:
+                campaigns[campaign_id] = {
+                    "id": campaign_id,
+                    "queued_calls": 0,
+                    "available_agents": 0
+                }
+            if member.status == AgentState.AVAILABLE.value:
+                campaigns[campaign_id]["available_agents"] += 1
+
+        return campaigns
