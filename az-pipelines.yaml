@@ -1,0 +1,27 @@
+trigger: none
+
+pr:
+  branches:
+    include:
+      - master
+pool:
+  name: 'AZmontechelo'
+
+variables:
+- group: AWSBuildVariables
+- group: DockerBuildVariables
+
+resources:
+  repositories:
+    - repository : eks_manifiestos
+      endpoint: montechelocloud_sc
+      type: git
+      name: Devops_cloud/eks_manifiestos
+      ref: refs/heads/main
+
+extends:
+  template: "pipelines_templates/apis-asterisk-prod.yaml@eks_manifiestos"
+  parameters:
+    BRANCH: 'master'
+    APP_NAME: 'apisasterisk'
+    EKS_BRANCH: 'master'
